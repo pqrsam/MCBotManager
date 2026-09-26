@@ -92,11 +92,13 @@ class BotManager {
   startPositionTimer () {
     if (this.positionTimer) return
     this.positionTimer = setInterval(() => {
+      let dirty = false
       for (const s of this.sessions.values()) {
         if (!s.posDirty) continue
         s.posDirty = false
-        this.onChange()
+        dirty = true
       }
+      if (dirty) this.onChange()
     }, POSITION_INTERVAL_MS)
   }
 

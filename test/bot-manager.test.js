@@ -4,13 +4,32 @@ const assert = require('node:assert')
 const { LogBus } = require('../src/log-bus')
 const { BotManager } = require('../src/bot-manager')
 
-function makeManager (names = ['A', 'B', 'C']) {
-  const mgr = new BotManager(names, new LogBus())
+function makeManager (names = ['A', 'B', 'C'], onChange = () => {}) {
+  const mgr = new BotManager(names, new LogBus(), onChange)
   for (const [name, s] of mgr.sessions) {
     s.status = name === 'A' ? 'connected' : 'disconnected'
     s.bot = s.status === 'connected' ? { chat () {} } : null
   }
   return mgr
+}
+
+function withFakeTimers (fn) {
+  const realSetInterval = globalThis.setInterval
+  const realClearInterval = globalThis.clearInterval
+  const created = []
+  const cleared = []
+  globalThis.setInterval = (cb, ms) => {
+    const handle = { ms }
+    created.push({ cb, ms, handle })
+    return handle
+  }
+  globalThis.clearInterval = (handle) => { cleared.push(handle) }
+  try {
+    fn({ created, cleared })
+  } finally {
+    globalThis.setInterval = realSetInterval
+    globalThis.clearInterval = realClearInterval
+  }
 }
 
 test('sessions are created for every configured username', () => {
@@ -49,10 +68,76 @@ test('disconnectOne is safe for an unknown username', () => {
   assert.doesNotThrow(() => mgr.disconnectOne('nope'))
 })
 
-test('the position timer is a single shared interval', () => {
-  const mgr = makeManager(['A', 'B', 'C'])
-  mgr.startPositionTimer()
-  mgr.startPositionTimer()
-  mgr.stopPositionTimer()
-  assert.ok(true)
+test('starting the position timer twice keeps a single 1000ms interval', () => {
+  withFakeTimers(({ created }) => {
+    const mgr = makeManager()
+    mgr.startPositionTimer()
+    const handle = mgr.positionTimer
+    assert.ok(handle)
+    mgr.startPositionTimer()
+    assert.strictEqual(mgr.positionTimer, handle)
+    assert.strictEqual(created.length, 1)
+    assert.strictEqual(created[0].ms, 1000)
+  })
+})
+
+test('stopping the position timer is safe when not started and when repeated', () => {
+  withFakeTimers(({ created, cleared }) => {
+    const mgr = makeManager()
+    assert.strictEqual(mgr.positionTimer, null)
+    assert.doesNotThrow(() => mgr.stopPositionTimer())
+    assert.strictEqual(created.length, 0)
+    mgr.startPositionTimer()
+    const handle = mgr.positionTimer
+    assert.doesNotThrow(() => mgr.stopPositionTimer())
+    assert.doesNotThrow(() => mgr.stopPositionTimer())
+    assert.strictEqual(mgr.positionTimer, null)
+    assert.strictEqual(cleared.length, 1)
+    assert.strictEqual(cleared[0], handle)
+  })
+})
+
+test('the position timer restarts after being stopped', () => {
+  withFakeTimers(({ created }) => {
+    let pushes = 0
+    const mgr = makeManager(['A'], () => { pushes++ })
+    mgr.startPositionTimer()
+    const first = mgr.positionTimer
+    mgr.stopPositionTimer()
+    assert.strictEqual(mgr.positionTimer, null)
+    mgr.startPositionTimer()
+    assert.ok(mgr.positionTimer)
+    assert.notStrictEqual(mgr.positionTimer, first)
+    assert.strictEqual(created.length, 2)
+    mgr.session('A').posDirty = true
+    created[1].cb()
+    assert.strictEqual(pushes, 1)
+  })
+})
+
+test('a position tick with dirty sessions pushes onChange exactly once', () => {
+  withFakeTimers(({ created }) => {
+    let pushes = 0
+    const mgr = makeManager(['A', 'B', 'C'], () => { pushes++ })
+    mgr.startPositionTimer()
+    for (const s of mgr.sessions.values()) s.posDirty = true
+    created[0].cb()
+    assert.strictEqual(pushes, 1)
+    assert.deepStrictEqual([...mgr.sessions.values()].map(s => s.posDirty), [false, false, false])
+  })
+})
+
+test('a position tick with nothing dirty pushes nothing', () => {
+  withFakeTimers(({ created }) => {
+    let pushes = 0
+    const mgr = makeManager(['A', 'B', 'C'], () => { pushes++ })
+    mgr.startPositionTimer()
+    created[0].cb()
+    assert.strictEqual(pushes, 0)
+    mgr.session('A').posDirty = true
+    created[0].cb()
+    assert.strictEqual(pushes, 1)
+    created[0].cb()
+    assert.strictEqual(pushes, 1)
+  })
 })
