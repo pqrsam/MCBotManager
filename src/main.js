@@ -37,6 +37,9 @@ function createWindow () {
   win = new BrowserWindow({
     width: 1280,
     height: 820,
+    minWidth: 900,
+    minHeight: 560,
+    maximize: true,
     backgroundColor: '#14161a',
     title: 'MCBotManager',
     autoHideMenuBar: true,
@@ -49,6 +52,7 @@ function createWindow () {
   })
   Menu.setApplicationMenu(null)
   win.setMenuBarVisibility(false)
+  win.once('ready-to-show', () => { win.maximize() })
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
   win.on('closed', () => { win = null })
 }
