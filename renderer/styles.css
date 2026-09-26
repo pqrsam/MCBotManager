@@ -5,6 +5,10 @@ body {
   font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 .hidden { display: none !important; }
+.fatal {
+  margin: 0; padding: 8px 16px; background: #4a1f1c; color: #ffb4ac;
+  border-bottom: 1px solid #6b2b26; white-space: pre-wrap;
+}
 .screen { padding: 16px; }
 h1 { font-size: 16px; margin: 0 0 8px; }
 h2 { font-size: 13px; margin: 14px 0 6px; color: #9aa3ad; text-transform: uppercase; letter-spacing: .06em; }
