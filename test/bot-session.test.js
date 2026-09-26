@@ -199,3 +199,69 @@ test('chatToText joins nested extra arrays in order', () => {
   assert.strictEqual(chatToText({ text: 'a', extra: ['b', { text: 'c' }] }), 'abc')
   assert.deepStrictEqual(chatToText(['x', 'y']), 'xy')
 })
+
+test('describeReason flattens the simplified-NBT anti-bot kick', () => {
+  const reason = { "type": "compound", "value": { "extra": { "type": "list", "value": { "type": "compound", "value": [
+    { "color": { "type": "string", "value": "dark_green" }, "bold": { "type": "byte", "value": 1 }, "text": { "type": "string", "value": "TREXMINE" } },
+    { "": { "type": "string", "value": "\n" } },
+    { "color": { "type": "string", "value": "gray" }, "text": { "type": "string", "value": "AntiBot Verification" } },
+    { "": { "type": "string", "value": "\n\n" } },
+    { "color": { "type": "string", "value": "red" }, "text": { "type": "string", "value": "You failed the AntiBot verification." } },
+    { "": { "type": "string", "value": "\n" } },
+    { "color": { "type": "string", "value": "gray" }, "text": { "type": "string", "value": "Please wait a few seconds before trying again." } },
+    { "": { "type": "string", "value": "\n" } },
+    { "color": { "type": "string", "value": "gold" }, "text": { "type": "string", "value": "Need help joining?" } },
+    { "": { "type": "string", "value": " " } },
+    { "color": { "type": "string", "value": "gray" }, "text": { "type": "string", "value": "https://discord.gg/trexmine" } },
+    { "extra": { "type": "list", "value": { "type": "compound", "value": [
+      { "color": { "type": "string", "value": "gray" }, "text": { "type": "string", "value": "If this is a mistake, contact staff:" } },
+      { "": { "type": "string", "value": " " } },
+      { "color": { "type": "string", "value": "green" }, "text": { "type": "string", "value": "https://discord.gg/trexmine" } }
+    ] } }, "text": { "type": "string", "value": "\n\n" } }
+  ] } }, "text": { "type": "string", "value": "" } } }
+  const out = describeReason(reason)
+  assert.strictEqual(out, [
+    'TREXMINE',
+    'AntiBot Verification',
+    '',
+    'You failed the AntiBot verification.',
+    'Please wait a few seconds before trying again.',
+    'Need help joining? https://discord.gg/trexmine',
+    '',
+    'If this is a mistake, contact staff: https://discord.gg/trexmine'
+  ].join('\n'))
+  assert.ok(!out.includes('"type"'), 'must not dump raw NBT')
+  assert.ok(!out.includes('dark_green'), 'must not leak colour names')
+  assert.ok(!out.includes('"value"'), 'must not dump raw NBT')
+})
+
+test('chatToText keeps newlines from empty-key separator nodes', () => {
+  assert.strictEqual(chatToText({ '': { type: 'string', value: '\n' } }), '\n')
+  assert.strictEqual(chatToText({ text: { type: 'string', value: 'a' }, extra: { type: 'list', value: { type: 'compound', value: [{ '': { type: 'string', value: '\n' } }, { text: { type: 'string', value: 'b' } }] } } }), 'a\nb')
+})
+
+test('chatToText ignores styling keys when falling back to unknown keys', () => {
+  assert.strictEqual(chatToText({ color: { type: 'string', value: 'red' } }), '')
+  assert.strictEqual(chatToText({ color: 'red', bold: 1, text: 'hi' }), 'hi')
+})
+
+test('clearing live state drops the cached position and health', () => {
+  const session = new BotSession('X', new LogBus(), () => {})
+  session.status = 'connected'
+  session.latestPos = { x: 1, y: 2, z: 3 }
+  session.health = 20
+  session.posDirty = true
+  session._clearLiveState()
+  assert.deepStrictEqual(session.snapshot().pos, null)
+  assert.strictEqual(session.snapshot().health, null)
+  assert.strictEqual(session.posDirty, false)
+})
+
+test('a disconnected session reports no position', () => {
+  const session = new BotSession('X', new LogBus(), () => {})
+  session.status = 'connected'
+  session.latestPos = { x: 10, y: 64, z: -5 }
+  session._destroyBot()
+  assert.strictEqual(session.status, 'disconnected')
+  assert.deepStrictEqual(session.snapshot().pos, null)
+})

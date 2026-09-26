@@ -72,6 +72,26 @@
     })
   }
 
+  function buildLine (entry) {
+    const div = document.createElement('div')
+    const m = entry.text.match(/^\[[\d:]+\] \[(\w+)\]/)
+    if (m) {
+      const tag = document.createElement('span')
+      tag.className = `tag-${m[1]}`
+      tag.textContent = `[${m[1]}]`
+      div.appendChild(tag)
+      div.appendChild(document.createTextNode(entry.text.slice(m[0].length)))
+    } else {
+      div.textContent = entry.text
+    }
+    return div
+  }
+
+  function trimConsole (c) {
+    if (c.nodes.length <= CONSOLE_LIMIT) return
+    for (const n of c.nodes.splice(0, c.nodes.length - CONSOLE_LIMIT)) n.remove()
+  }
+
   function flushConsole (key) {
     const c = consoleState[key]
     if (!c.el || c.pending.length === 0) return
@@ -79,26 +99,31 @@
     for (const entry of c.pending) {
       if (entry.id <= c.lastId) continue
       c.lastId = entry.id
-      const div = document.createElement('div')
-      const m = entry.text.match(/^\[[\d:]+\] \[(\w+)\]/)
-      if (m) {
-        const tag = document.createElement('span')
-        tag.className = `tag-${m[1]}`
-        tag.textContent = `[${m[1]}]`
-        div.appendChild(tag)
-        div.appendChild(document.createTextNode(entry.text.slice(m[0].length)))
-      } else {
-        div.textContent = entry.text
-      }
+      const div = buildLine(entry)
       frag.appendChild(div)
       c.nodes.push(div)
     }
     c.pending.length = 0
     c.el.appendChild(frag)
-    if (c.nodes.length > CONSOLE_LIMIT) {
-      const excess = c.nodes.splice(0, c.nodes.length - CONSOLE_LIMIT)
-      for (const n of excess) n.remove()
+    trimConsole(c)
+    if (c.stick) c.el.scrollTop = c.el.scrollHeight
+  }
+
+  function seedConsole (key, entries) {
+    const c = consoleState[key]
+    c.pending.length = 0
+    for (const n of c.nodes) n.remove()
+    c.nodes.length = 0
+    c.lastId = 0
+    const frag = document.createDocumentFragment()
+    for (const entry of entries) {
+      const div = buildLine(entry)
+      frag.appendChild(div)
+      c.nodes.push(div)
+      if (entry.id > c.lastId) c.lastId = entry.id
     }
+    c.el.appendChild(frag)
+    trimConsole(c)
     if (c.stick) c.el.scrollTop = c.el.scrollHeight
   }
 
@@ -177,6 +202,13 @@
 
   async function select (username) {
     if (state.selected && state.selected !== username) api.bots.stop(state.selected)
+    let history = []
+    try {
+      history = username ? await api.logHistory(username) : []
+    } catch (err) {
+      history = []
+      reportGlobalError(`could not load console history: ${err.message}`)
+    }
     state.selected = username
     if (username) {
       const b = state.bots.find(x => x.username === username)
@@ -186,19 +218,7 @@
         ui['dig-z'].value = String(Math.floor(b.pos.z))
       }
     }
-    const c = consoleState.bot
-    c.pending.length = 0
-    for (const n of c.nodes) n.remove()
-    c.nodes.length = 0
-    c.lastId = 0
-    if (username) {
-      const history = await api.logHistory(username)
-      for (const entry of history) {
-        c.pending.push(entry)
-        if (entry.id > c.lastId) c.lastId = entry.id
-      }
-      scheduleFlush()
-    }
+    seedConsole('bot', history)
     render()
   }
 

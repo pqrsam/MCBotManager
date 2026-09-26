@@ -18,19 +18,36 @@ function isTransferAction (action) {
   return a === 'connect' || a === 'transfer'
 }
 
+const STYLE_KEYS = new Set(['color', 'bold', 'italic', 'underlined', 'strikethrough', 'obfuscated', 'font', 'type'])
+
+function isTagged (node) {
+  return typeof node.type === 'string' && 'value' in node && !('text' in node) && !('extra' in node)
+}
+
 function chatToText (node) {
   if (node === null || node === undefined) return ''
   if (typeof node === 'string') return node
+  if (typeof node === 'number' || typeof node === 'boolean') return String(node)
   if (Array.isArray(node)) return node.map(chatToText).join('')
-  if (typeof node === 'object') {
-    if (typeof node.toString === 'function' && node.toString !== Object.prototype.toString) {
-      return node.toString()
-    }
-    let out = typeof node.text === 'string' ? node.text : ''
-    if (Array.isArray(node.extra)) out += node.extra.map(chatToText).join('')
-    return out
+  if (typeof node !== 'object') return String(node)
+
+  if (typeof node.toString === 'function' && node.toString !== Object.prototype.toString) {
+    return node.toString()
   }
-  return String(node)
+
+  if (isTagged(node)) return chatToText(node.value)
+
+  let out = ''
+  if ('text' in node) out += chatToText(node.text)
+  if ('extra' in node) out += chatToText(node.extra)
+  if (out === '' && 'value' in node) out += chatToText(node.value)
+  if (out === '') {
+    for (const [key, value] of Object.entries(node)) {
+      if (STYLE_KEYS.has(key)) continue
+      out += chatToText(value)
+    }
+  }
+  return out
 }
 
 function describeReason (reason) {
@@ -189,7 +206,7 @@ class BotSession {
     bot.on('messagestr', (msg, position) => {
       if (bot !== this.bot) return
       const tag = position === 'chat' ? 'CHAT' : 'SYS'
-      this.say(tag, msg)
+      this.say(tag, describeReason(msg))
     })
 
     bot.on('move', () => {
@@ -225,6 +242,12 @@ class BotSession {
       this.bot = null
       this.setStatus('disconnected')
     })
+  }
+
+  _clearLiveState () {
+    this.latestPos = null
+    this.health = null
+    this.posDirty = false
   }
 
   _fmtPos (p) {
@@ -269,6 +292,7 @@ class BotSession {
       try { this.bot.quit('transfer') } catch (_) {}
       this.bot = null
     }
+    this._clearLiveState()
     this.setStatus('disconnected')
   }
 
