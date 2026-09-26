@@ -98,15 +98,21 @@ class BotSession {
     this.say('EVENT', `connecting to ${host}:${port} (${version})`)
     this.global('EVENT', `connecting to ${host}:${port} (${version})`)
 
-    const bot = mineflayer.createBot({
-      host,
-      port,
-      username: this.username,
-      version,
-      auth: 'offline',
-      logErrors: false,
-      hideErrors: true
-    })
+    let bot
+    try {
+      bot = mineflayer.createBot({
+        host,
+        port,
+        username: this.username,
+        version,
+        auth: 'offline',
+        logErrors: false,
+        hideErrors: true
+      })
+    } catch (err) {
+      this.setStatus('disconnected')
+      throw err
+    }
     this.bot = bot
 
     bot.on('login', () => {

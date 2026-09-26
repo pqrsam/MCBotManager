@@ -48,6 +48,26 @@ test('a fresh session has no dig in flight and aborting a dig is a no-op', () =>
   assert.strictEqual(session.digFinish, null)
 })
 
+test('a spawn that throws leaves the session disconnected and retryable', () => {
+  const mineflayer = require('mineflayer')
+  const realCreateBot = mineflayer.createBot
+  let attempts = 0
+  mineflayer.createBot = () => { attempts++; throw new Error('Unsupported protocol version') }
+  try {
+    const session = new BotSession('X', new LogBus(), () => {})
+    assert.throws(
+      () => session.connect({ host: 'bad host', port: 25565, version: 'nope' }),
+      /Unsupported protocol version/
+    )
+    assert.strictEqual(session.status, 'disconnected')
+    assert.strictEqual(session.bot, null)
+    assert.throws(() => session.connect({ host: 'bad host', port: 25565, version: 'nope' }))
+    assert.strictEqual(attempts, 2)
+  } finally {
+    mineflayer.createBot = realCreateBot
+  }
+})
+
 test('dig rejects a second concurrent dig while one is in flight', async () => {
   const session = new BotSession('X', new LogBus(), () => {})
   session.status = 'connected'

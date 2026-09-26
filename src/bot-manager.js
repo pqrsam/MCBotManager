@@ -17,7 +17,7 @@ class BotManager {
   }
 
   setSettings (settings) {
-    this.settings = { ...settings }
+    this.settings = settings ? { ...settings } : null
     this.onChange()
   }
 
@@ -59,10 +59,13 @@ class BotManager {
   }
 
   disconnectAll (reason = 'disconnect.quitting') {
-    for (const s of this.sessions.values()) {
-      try { s.disconnect(reason) } catch (err) { this.log.emitGlobal(formatLine('ERROR', `${s.username} ${err.message}`)) }
+    try {
+      for (const s of this.sessions.values()) {
+        try { s.disconnect(reason) } catch (err) { this.log.emitGlobal(formatLine('ERROR', `${s.username} ${err.message}`)) }
+      }
+    } finally {
+      this.stopPositionTimer()
     }
-    this.stopPositionTimer()
   }
 
   disconnectOne (username, reason = 'disconnect.quitting') {
