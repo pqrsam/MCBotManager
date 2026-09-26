@@ -18,6 +18,39 @@ function isTransferAction (action) {
   return a === 'connect' || a === 'transfer'
 }
 
+function chatToText (node) {
+  if (node === null || node === undefined) return ''
+  if (typeof node === 'string') return node
+  if (Array.isArray(node)) return node.map(chatToText).join('')
+  if (typeof node === 'object') {
+    if (typeof node.toString === 'function' && node.toString !== Object.prototype.toString) {
+      return node.toString()
+    }
+    let out = typeof node.text === 'string' ? node.text : ''
+    if (Array.isArray(node.extra)) out += node.extra.map(chatToText).join('')
+    return out
+  }
+  return String(node)
+}
+
+function describeReason (reason) {
+  if (reason === null || reason === undefined) return 'unknown'
+  if (typeof reason === 'string') {
+    const trimmed = reason.trim()
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        const text = chatToText(parsed).trim()
+        if (text) return text
+      } catch (_) { /* not JSON, use it verbatim */ }
+    }
+    return reason
+  }
+  const text = chatToText(reason).trim()
+  if (text) return text
+  try { return JSON.stringify(reason) } catch (_) { return String(reason) }
+}
+
 function parseCoords (x, y, z) {
   const nums = [x, y, z].map(v => {
     if (typeof v === 'number') return v
@@ -180,7 +213,7 @@ class BotSession {
     })
     bot.on('kicked', (reason) => {
       if (bot !== this.bot) return
-      const msg = typeof reason === 'string' ? reason : JSON.stringify(reason)
+      const msg = describeReason(reason)
       this.say('EVENT', `kicked: ${msg}`)
       this.global('EVENT', `kicked: ${msg}`)
     })
@@ -352,4 +385,4 @@ class BotSession {
   }
 }
 
-module.exports = { BotSession, parsePluginPayload, parseCoords, isTransferAction }
+module.exports = { BotSession, parsePluginPayload, parseCoords, isTransferAction, chatToText, describeReason }

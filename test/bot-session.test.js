@@ -1,7 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert')
 
-const { parsePluginPayload, parseCoords, isTransferAction, BotSession } = require('../src/bot-session')
+const { parsePluginPayload, parseCoords, isTransferAction, BotSession, chatToText, describeReason } = require('../src/bot-session')
 const { LogBus } = require('../src/log-bus')
 
 test('parsePluginPayload splits Action and data on the NUL byte', () => {
@@ -174,4 +174,28 @@ test('dig rejects a second concurrent dig while one is in flight', async () => {
   session.digFinish = () => {}
   const result = await session.dig(1, 64, 2)
   assert.deepStrictEqual(result, { ok: false, error: 'a dig is already in progress' })
+})
+
+test('describeReason flattens a coloured anti-bot kick to readable text', () => {
+  const reason = { "extra": [{"bold":true,"color":"dark_green","text":"TREXMINE"},"\n",{"color":"gray","text":"AntiBot Verification"},"\n\n",{"color":"gold","text":"You reconnected too fast."},"\n",{"color":"gray","text":"Please wait a few seconds before trying again."},{"extra":[{"color":"gray","text":"If this is a mistake, contact staff:"}," ",{"color":"green","text":"https://discord.gg/trexmine"}],"text":"\n\n"}],"text":"" }
+  const out = describeReason(reason)
+  assert.ok(out.includes('You reconnected too fast.'), out)
+  assert.ok(out.includes('AntiBot Verification'), out)
+  assert.ok(out.includes('https://discord.gg/trexmine'), out)
+  assert.ok(!out.includes('{"extra"'), 'must not dump raw JSON')
+  assert.ok(!out.includes('"color"'), 'must not dump raw JSON')
+})
+
+test('describeReason handles a JSON string, plain strings and odd input', () => {
+  assert.strictEqual(describeReason('{"text":"bye"}'), 'bye')
+  assert.strictEqual(describeReason('socketClosed'), 'socketClosed')
+  assert.strictEqual(describeReason('not json {'), 'not json {')
+  assert.strictEqual(describeReason(null), 'unknown')
+  assert.strictEqual(describeReason(undefined), 'unknown')
+  assert.strictEqual(describeReason(42), '42')
+})
+
+test('chatToText joins nested extra arrays in order', () => {
+  assert.strictEqual(chatToText({ text: 'a', extra: ['b', { text: 'c' }] }), 'abc')
+  assert.deepStrictEqual(chatToText(['x', 'y']), 'xy')
 })

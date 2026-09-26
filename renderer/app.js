@@ -22,11 +22,10 @@
   function cacheUi () {
     for (const id of [
       'setup-screen', 'setup-textarea', 'setup-save', 'setup-cancel',
-      'app-screen', 'header-server', 'header-version',
-      'btn-connect-all', 'btn-disconnect-all', 'btn-edit-bots',
-      'connect-dialog', 'connect-host', 'connect-port', 'connect-version', 'connect-confirm', 'connect-cancel',
-      'bot-table-body', 'all-message', 'all-send-message', 'all-command', 'all-send-command',
-      'bot-message', 'bot-send-chat', 'bot-command', 'bot-send-command',
+      'app-screen', 'btn-connect-all', 'btn-disconnect-all', 'btn-edit-bots',
+      'connect-host', 'connect-port', 'connect-version',
+      'bot-table-body', 'all-message', 'all-send-message',
+      'bot-message', 'bot-send-chat',
       'btn-move-stop', 'dig-x', 'dig-y', 'dig-z', 'btn-dig',
       'selected-name', 'bot-console-title', 'bot-console', 'global-console', 'btn-toggle-global', 'fatal'
     ]) ui[id] = $(id)
@@ -85,7 +84,7 @@
       if (m) {
         const tag = document.createElement('span')
         tag.className = `tag-${m[1]}`
-        tag.textContent = `[${m[1]}] `
+        tag.textContent = `[${m[1]}]`
         div.appendChild(tag)
         div.appendChild(document.createTextNode(entry.text.slice(m[0].length)))
       } else {
@@ -129,8 +128,9 @@
           const b = state.bots.find(x => x.username === ev.currentTarget.dataset.name)
           if (!b) return
           if (b.status === 'disconnected') {
-            if (state.settings) api.bots.connectOne(b.username)
-            else openConnectDialog(b.username)
+            const bar = readConnectBar()
+            if (!bar.ok) { reportGlobalError(bar.error); return }
+            api.bots.connectOne(b.username, bar.value)
           } else {
             api.bots.disconnectOne(b.username)
           }
@@ -159,17 +159,14 @@
   }
 
   function renderHeader () {
-    ui['header-server'].textContent = state.settings ? `${state.settings.host}:${state.settings.port}` : 'not selected'
-    ui['header-version'].textContent = state.settings ? state.settings.version : '-'
     ui['selected-name'].textContent = state.selected || 'none'
     ui['bot-console-title'].textContent = state.selected ? `${state.selected} console` : 'Bot console'
     const has = state.bots.length > 0
     ui['btn-connect-all'].disabled = !has
     ui['btn-disconnect-all'].disabled = !has
     ui['all-send-message'].disabled = !has
-    ui['all-send-command'].disabled = !has
     const none = !state.selected
-    for (const id of ['bot-send-chat', 'bot-send-command', 'btn-move-stop', 'btn-dig']) ui[id].disabled = none
+    for (const id of ['bot-send-chat', 'btn-move-stop', 'btn-dig']) ui[id].disabled = none
     for (const b of document.querySelectorAll('.movement .move')) b.disabled = none
   }
 
@@ -227,25 +224,14 @@
     render()
   }
 
-  function readConnectForm () {
+  function readConnectBar () {
     const host = ui['connect-host'].value.trim()
-    const portRaw = ui['connect-port'].value.trim()
+    const port = Number(ui['connect-port'].value.trim())
     const version = ui['connect-version'].value
     if (!host) return { ok: false, error: 'host is required' }
-    const port = Number(portRaw)
     if (!Number.isInteger(port) || port < 1 || port > 65535) return { ok: false, error: 'port must be 1-65535' }
     if (!version) return { ok: false, error: 'version is required' }
-    return { ok: true, settings: { host, port, version } }
-  }
-
-  function openConnectDialog (onlyFor = null) {
-    if (state.settings) {
-      ui['connect-host'].value = state.settings.host
-      ui['connect-port'].value = String(state.settings.port)
-      ui['connect-version'].value = state.settings.version
-    }
-    ui['connect-confirm'].textContent = onlyFor ? `Connect ${onlyFor}` : 'Connect All'
-    ui['connect-dialog'].showModal()
+    return { ok: true, value: { host, port, version } }
   }
 
   function wireSend (inputId, buttonId, handler) {
@@ -328,20 +314,15 @@
       showSetup(state.bots.map(b => b.username), true)
     })
 
-    ui['btn-connect-all'].addEventListener('click', () => openConnectDialog(null))
-    ui['btn-disconnect-all'].addEventListener('click', () => api.bots.disconnectAll())
-    ui['connect-cancel'].addEventListener('click', () => ui['connect-dialog'].close())
-    ui['connect-confirm'].addEventListener('click', async () => {
-      const form = readConnectForm()
-      if (!form.ok) { pushLine('global', { id: 0, bot: null, text: localLine('ERROR', form.error) }); return }
-      ui['connect-dialog'].close()
-      await api.bots.connectAll(form.settings)
+    ui['btn-connect-all'].addEventListener('click', async () => {
+      const bar = readConnectBar()
+      if (!bar.ok) { reportGlobalError(bar.error); return }
+      await api.bots.connectAll(bar.value)
     })
+    ui['btn-disconnect-all'].addEventListener('click', () => api.bots.disconnectAll())
 
     wireSend('bot-message', 'bot-send-chat', (text) => api.bots.chat(state.selected, text))
-    wireSend('bot-command', 'bot-send-command', (text) => api.bots.command(state.selected, text))
     wireSend('all-message', 'all-send-message', (text) => api.bots.broadcastChat(text))
-    wireSend('all-command', 'all-send-command', (text) => api.bots.broadcastCommand(text))
 
     wireMovement()
 

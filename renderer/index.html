@@ -17,30 +17,20 @@
     </div>
   </section>
 
-  <section id="app-screen" class="screen hidden">
+  <section id="app-screen" class="screen">
     <header>
       <h1>Minecraft Bot Tester</h1>
-      <div class="session-info">
-        <span>Server: <b id="header-server">not selected</b></span>
-        <span>Version: <b id="header-version">-</b></span>
-      </div>
-      <div class="row">
-        <button id="btn-connect-all" class="primary">Connect All</button>
-        <button id="btn-disconnect-all">Disconnect All</button>
-        <button id="btn-edit-bots">Edit Bots</button>
+      <div class="connect-bar">
+        <label>Host<input id="connect-host" type="text" value="127.0.0.1" spellcheck="false"></label>
+        <label class="narrow">Port<input id="connect-port" type="text" value="25565" spellcheck="false"></label>
+        <label>Version<select id="connect-version"></select></label>
+        <div class="row">
+          <button id="btn-connect-all" class="primary">Connect All</button>
+          <button id="btn-disconnect-all">Disconnect All</button>
+          <button id="btn-edit-bots">Edit Bots</button>
+        </div>
       </div>
     </header>
-
-    <dialog id="connect-dialog">
-      <h2>Connect bots</h2>
-      <label>Server IP / Host:<input id="connect-host" type="text" value="127.0.0.1" spellcheck="false"></label>
-      <label>Port:<input id="connect-port" type="text" value="25565" spellcheck="false"></label>
-      <label>Minecraft Version:<select id="connect-version"></select></label>
-      <div class="row">
-        <button id="connect-confirm" class="primary">Connect</button>
-        <button id="connect-cancel">Cancel</button>
-      </div>
-    </dialog>
 
     <main>
       <div class="col">
@@ -51,15 +41,13 @@
         </table>
 
         <h2>All Players</h2>
-        <div class="field"><input id="all-message" type="text" placeholder="Message" spellcheck="false"><button id="all-send-message">Send to All</button></div>
-        <div class="field"><input id="all-command" type="text" placeholder="/command" spellcheck="false"><button id="all-send-command">Send to All</button></div>
+        <div class="field"><input id="all-message" type="text" placeholder="Message or /command" spellcheck="false"><button id="all-send-message">Send to All</button></div>
       </div>
 
       <div class="col">
         <h2>Selected bot: <b id="selected-name">none</b></h2>
 
-        <div class="field"><input id="bot-message" type="text" placeholder="Message" spellcheck="false"><button id="bot-send-chat">Send Chat</button></div>
-        <div class="field"><input id="bot-command" type="text" placeholder="/command" spellcheck="false"><button id="bot-send-command">Send Command</button></div>
+        <div class="field"><input id="bot-message" type="text" placeholder="Message or /command" spellcheck="false"><button id="bot-send-chat">Send</button></div>
 
         <h3>Movement</h3>
         <div class="movement">

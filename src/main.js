@@ -91,11 +91,6 @@ function registerIpc () {
     return s ? s.send(text) : { ok: false, error: `unknown bot: ${username}` }
   })
 
-  ipcMain.handle('bot:command', (_e, username, text) => {
-    const s = manager.session(username)
-    return s ? s.send(text) : { ok: false, error: `unknown bot: ${username}` }
-  })
-
   ipcMain.handle('bot:control', (_e, username, control, value) => {
     const s = manager.session(username)
     return s ? s.setControl(control, value) : { ok: false, error: `unknown bot: ${username}` }
@@ -114,7 +109,6 @@ function registerIpc () {
   })
 
   ipcMain.handle('broadcast:chat', (_e, text) => manager.broadcast(text))
-  ipcMain.handle('broadcast:command', (_e, text) => manager.broadcast(text))
 
   ipcMain.handle('logs:history', (_e, username) => {
     const buf = username == null ? logBus.global : logBus.forBot(username)

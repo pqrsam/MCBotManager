@@ -19,12 +19,10 @@ contextBridge.exposeInMainWorld('api', {
     disconnectAll: () => ipcRenderer.invoke('disconnect:all'),
     disconnectOne: (username) => ipcRenderer.invoke('disconnect:one', username),
     chat: (username, text) => ipcRenderer.invoke('bot:chat', username, text),
-    command: (username, text) => ipcRenderer.invoke('bot:command', username, text),
     control: (username, control, state) => ipcRenderer.invoke('bot:control', username, control, state),
     stop: (username) => ipcRenderer.invoke('bot:stop', username),
     dig: (username, x, y, z) => ipcRenderer.invoke('bot:dig', username, x, y, z),
-    broadcastChat: (text) => ipcRenderer.invoke('broadcast:chat', text),
-    broadcastCommand: (text) => ipcRenderer.invoke('broadcast:command', text)
+    broadcastChat: (text) => ipcRenderer.invoke('broadcast:chat', text)
   },
   onStateChanged: (fn) => on('state:changed', fn),
   onLogLine: (fn) => on('log:line', fn),
