@@ -51,11 +51,11 @@ tr.clickable { cursor: pointer; }
 .movement button { min-width: 46px; }
 .console {
   background: #0e1013; border: 1px solid #23272e; border-radius: 3px;
-  height: 220px; overflow-y: auto; padding: 6px 8px;
+  height: 320px; overflow-y: auto; padding: 6px 8px;
   white-space: pre-wrap; word-break: break-word;
 }
 footer { margin-top: 14px; border-top: 1px solid #262a30; padding-top: 8px; }
-footer .console { height: 150px; }
+footer .console { height: 240px; }
 .tag-CHAT { color: #d6d9de; }
 .tag-SYS { color: #9aa3ad; }
 .tag-SEND { color: #6fb3d6; }

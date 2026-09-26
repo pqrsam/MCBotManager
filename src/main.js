@@ -1,5 +1,5 @@
 const path = require('node:path')
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, Menu, ipcMain } = require('electron')
 const mineflayer = require('mineflayer')
 
 const { loadConfig, saveConfig, configPath } = require('./config')
@@ -39,6 +39,7 @@ function createWindow () {
     height: 820,
     backgroundColor: '#14161a',
     title: 'Minecraft Bot Tester',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
       contextIsolation: true,
@@ -46,6 +47,8 @@ function createWindow () {
       sandbox: true
     }
   })
+  Menu.setApplicationMenu(null)
+  win.setMenuBarVisibility(false)
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
   win.on('closed', () => { win = null })
 }

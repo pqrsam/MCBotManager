@@ -1,7 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert')
 
-const { parsePluginPayload, parseCoords, isTransferAction, BotSession, chatToText, describeReason } = require('../src/bot-session')
+const { parsePluginPayload, parseCoords, isTransferAction, BotSession, chatToText, describeReason, errorText } = require('../src/bot-session')
 const { LogBus } = require('../src/log-bus')
 
 test('parsePluginPayload splits Action and data on the NUL byte', () => {
@@ -264,4 +264,44 @@ test('a disconnected session reports no position', () => {
   session._destroyBot()
   assert.strictEqual(session.status, 'disconnected')
   assert.deepStrictEqual(session.snapshot().pos, null)
+})
+
+test('a spontaneous end clears the cached position and health', () => {
+  const logBus = new LogBus()
+  const pushes = []
+  const session = new BotSession('X', logBus, () => pushes.push(session.status))
+  const handlers = {}
+  const realCreateBot = require('mineflayer').createBot
+  require('mineflayer').createBot = () => ({
+    on: (ev, fn) => { handlers[ev] = fn },
+    quit () {},
+    entity: { position: { x: 5, y: 64, z: 7 } },
+    health: 20,
+    game: {},
+    _client: { registerChannel () {}, on () {} }
+  })
+  try {
+    session.connect({ host: 'h', port: 25565, version: '1.8.8' })
+    session.status = 'connected'
+    session.latestPos = { x: 5, y: 64, z: 7 }
+    session.health = 20
+    assert.deepStrictEqual(session.snapshot().pos, { x: 5, y: 64, z: 7 })
+    handlers.end('socketClosed')
+    assert.strictEqual(session.status, 'disconnected')
+    assert.strictEqual(session.snapshot().pos, null, 'pos must be cleared on end')
+    assert.strictEqual(session.snapshot().health, null, 'health must be cleared on end')
+    assert.strictEqual(session.posDirty, false)
+  } finally {
+    require('mineflayer').createBot = realCreateBot
+  }
+})
+
+test('errorText keeps the message and appends trimmed stack frames', () => {
+  const err = new Error('boom')
+  const out = errorText(err)
+  assert.ok(out.startsWith('boom'), out)
+  assert.ok(out.includes('at '), 'should include stack frames')
+  assert.ok(!out.includes('Error: boom\n'), 'should not repeat the message line')
+  assert.strictEqual(errorText(null), 'unknown error')
+  assert.strictEqual(errorText({ message: 'no stack here' }), 'no stack here')
 })

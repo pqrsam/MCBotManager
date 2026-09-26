@@ -20,6 +20,15 @@ function isTransferAction (action) {
 
 const STYLE_KEYS = new Set(['color', 'bold', 'italic', 'underlined', 'strikethrough', 'obfuscated', 'font', 'type'])
 
+function errorText (err) {
+  if (!err) return 'unknown error'
+  const message = err.message ?? String(err)
+  const stack = typeof err.stack === 'string' ? err.stack : ''
+  const frames = stack.split('\n').slice(1).map(l => l.trim()).filter(Boolean)
+  if (frames.length === 0) return message
+  return `${message}\n    ${frames.slice(0, 6).join('\n    ')}`
+}
+
 function isTagged (node) {
   return typeof node.type === 'string' && 'value' in node && !('text' in node) && !('extra' in node)
 }
@@ -157,7 +166,8 @@ class BotSession {
         version,
         auth: 'offline',
         logErrors: false,
-        hideErrors: true
+        hideErrors: true,
+        plugins: { anvil: false, furnace: false, villager: false, simple_inventory: false }
       })
     } catch (err) {
       this.setStatus('disconnected')
@@ -225,8 +235,8 @@ class BotSession {
 
     bot.on('error', (err) => {
       if (bot !== this.bot) return
-      this.say('ERROR', err?.message ?? String(err))
-      this.global('ERROR', err?.message ?? String(err))
+      this.say('ERROR', errorText(err))
+      this.global('ERROR', `${this.username} ${err?.message ?? String(err)}`)
     })
     bot.on('kicked', (reason) => {
       if (bot !== this.bot) return
@@ -240,6 +250,7 @@ class BotSession {
       if (!this.isTransferring) this.global('EVENT', `disconnected (${reason})`)
       this._abortDig('disconnected')
       this.bot = null
+      this._clearLiveState()
       this.setStatus('disconnected')
     })
   }
@@ -409,4 +420,4 @@ class BotSession {
   }
 }
 
-module.exports = { BotSession, parsePluginPayload, parseCoords, isTransferAction, chatToText, describeReason }
+module.exports = { BotSession, parsePluginPayload, parseCoords, isTransferAction, chatToText, describeReason, errorText }
