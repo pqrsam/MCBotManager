@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Minecraft Bot Tester</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <section id="setup-screen" class="screen hidden">
+    <h1>Bot usernames</h1>
+    <p class="hint">One username per line. Saved to <code>config.json</code> and reused for every session.</p>
+    <textarea id="setup-textarea" rows="12" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="setup-save" class="primary">Save &amp; Continue</button>
+      <button id="setup-cancel" class="hidden">Cancel</button>
+    </div>
+  </section>
+
+  <section id="app-screen" class="screen hidden">
+    <header>
+      <h1>Minecraft Bot Tester</h1>
+      <div class="session-info">
+        <span>Server: <b id="header-server">not selected</b></span>
+        <span>Version: <b id="header-version">-</b></span>
+      </div>
+      <div class="row">
+        <button id="btn-connect-all" class="primary">Connect All</button>
+        <button id="btn-disconnect-all">Disconnect All</button>
+        <button id="btn-edit-bots">Edit Bots</button>
+      </div>
+    </header>
+
+    <dialog id="connect-dialog">
+      <h2>Connect bots</h2>
+      <label>Server IP / Host:<input id="connect-host" type="text" value="127.0.0.1" spellcheck="false"></label>
+      <label>Port:<input id="connect-port" type="text" value="25565" spellcheck="false"></label>
+      <label>Minecraft Version:<select id="connect-version"></select></label>
+      <div class="row">
+        <button id="connect-confirm" class="primary">Connect</button>
+        <button id="connect-cancel">Cancel</button>
+      </div>
+    </dialog>
+
+    <main>
+      <div class="col">
+        <h2>Bots</h2>
+        <table id="bot-table">
+          <thead><tr><th>Bot</th><th>Status</th><th>Pos</th><th>HP</th><th></th></tr></thead>
+          <tbody id="bot-table-body"></tbody>
+        </table>
+
+        <h2>All Players</h2>
+        <div class="field"><input id="all-message" type="text" placeholder="Message" spellcheck="false"><button id="all-send-message">Send to All</button></div>
+        <div class="field"><input id="all-command" type="text" placeholder="/command" spellcheck="false"><button id="all-send-command">Send to All</button></div>
+      </div>
+
+      <div class="col">
+        <h2>Selected bot: <b id="selected-name">none</b></h2>
+
+        <div class="field"><input id="bot-message" type="text" placeholder="Message" spellcheck="false"><button id="bot-send-chat">Send Chat</button></div>
+        <div class="field"><input id="bot-command" type="text" placeholder="/command" spellcheck="false"><button id="bot-send-command">Send Command</button></div>
+
+        <h3>Movement</h3>
+        <div class="movement">
+          <button class="move" data-control="forward">W</button>
+          <button class="move" data-control="left">A</button>
+          <button class="move" data-control="back">S</button>
+          <button class="move" data-control="right">D</button>
+          <button class="move" data-momentary="jump">Jump</button>
+          <button class="move" data-control="sneak">Sneak</button>
+          <button id="btn-move-stop">Stop</button>
+        </div>
+
+        <h3>Break Block</h3>
+        <div class="field">
+          <input id="dig-x" type="text" placeholder="X" size="6">
+          <input id="dig-y" type="text" placeholder="Y" size="6">
+          <input id="dig-z" type="text" placeholder="Z" size="6">
+          <button id="btn-dig">Break Block</button>
+        </div>
+
+        <h3 id="bot-console-title">Bot console</h3>
+        <div id="bot-console" class="console"></div>
+      </div>
+    </main>
+
+    <footer>
+      <h3>Global console <button id="btn-toggle-global" class="link">hide</button></h3>
+      <div id="global-console" class="console"></div>
+    </footer>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
