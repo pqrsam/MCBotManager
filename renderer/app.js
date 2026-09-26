@@ -7,7 +7,8 @@
     settings: null,
     selected: null,
     versions: [],
-    hasConfig: false
+    hasConfig: false,
+    server: null
   }
 
   const ui = {}
@@ -226,6 +227,7 @@
     state.bots = payload.bots || []
     state.settings = payload.settings || null
     state.hasConfig = payload.hasConfig
+    if (payload.server) state.server = payload.server
     if (state.selected && !state.bots.some(b => b.username === state.selected)) state.selected = null
     render()
   }
@@ -242,6 +244,14 @@
     ui['setup-screen'].classList.add('hidden')
     ui['app-screen'].classList.remove('hidden')
     render()
+  }
+
+  async function saveServer () {
+    const bar = readConnectBar()
+    if (!bar.ok) return
+    state.server = bar.value
+    const res = await api.config.setServer(bar.value)
+    if (!res.ok) reportGlobalError(`could not save server details: ${res.error}`)
   }
 
   function readConnectBar () {
@@ -314,6 +324,16 @@
     }
     const preferred = state.versions.find(v => v.startsWith('1.8'))
     if (preferred) sel.value = preferred
+
+    if (cfg.server) {
+      ui['connect-host'].value = cfg.server.host
+      ui['connect-port'].value = String(cfg.server.port)
+      if (cfg.server.version) sel.value = cfg.server.version
+    }
+    state.server = cfg.server
+    ui['connect-host'].addEventListener('change', saveServer)
+    ui['connect-port'].addEventListener('change', saveServer)
+    sel.addEventListener('change', saveServer)
 
     if (!cfg.exists || cfg.error) {
       showSetup(cfg.bots, false)

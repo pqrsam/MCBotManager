@@ -9,7 +9,8 @@ function on (channel, fn) {
 contextBridge.exposeInMainWorld('api', {
   config: {
     load: () => ipcRenderer.invoke('config:load'),
-    save: (bots) => ipcRenderer.invoke('config:save', bots)
+    save: (bots) => ipcRenderer.invoke('config:save', bots),
+    setServer: (server) => ipcRenderer.invoke('config:setServer', server)
   },
   bots: {
     versions: () => ipcRenderer.invoke('bots:versions'),

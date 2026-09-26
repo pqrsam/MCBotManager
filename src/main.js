@@ -11,13 +11,14 @@ let win = null
 let logBus = null
 let fileLog = null
 let manager = null
-let configState = { exists: false, bots: [] }
+let configState = { exists: false, bots: [], server: null }
 
 function state () {
   return {
     bots: manager ? manager.snapshots() : [],
     settings: manager ? manager.settings : null,
-    hasConfig: configState.exists
+    hasConfig: configState.exists,
+    server: configState.server
   }
 }
 
@@ -56,12 +57,18 @@ function registerIpc () {
   })
 
   ipcMain.handle('config:save', (_e, bots) => {
-    const res = saveConfig(configPath, bots)
+    const res = saveConfig(configPath, bots, configState.server)
     if (res.ok) {
       configState = loadConfig(configPath)
       rebuildRoster(configState.bots)
     }
     return res
+  })
+
+  ipcMain.handle('config:setServer', (_e, server) => {
+    const res = saveConfig(configPath, configState.bots, server)
+    if (res.ok) configState = loadConfig(configPath)
+    return { ok: res.ok, error: res.error, server: configState.server }
   })
 
   ipcMain.handle('bots:versions', () => mineflayer.testedVersions.slice())
