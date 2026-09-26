@@ -1,7 +1,8 @@
 const test = require('node:test')
 const assert = require('node:assert')
 
-const { parsePluginPayload, parseCoords, isTransferAction } = require('../src/bot-session')
+const { parsePluginPayload, parseCoords, isTransferAction, BotSession } = require('../src/bot-session')
+const { LogBus } = require('../src/log-bus')
 
 test('parsePluginPayload splits Action and data on the NUL byte', () => {
   const buf = Buffer.from('Connect\u0000tbw-1', 'utf8')
@@ -36,4 +37,13 @@ test('parseCoords rejects non-integers and blanks', () => {
   assert.strictEqual(parseCoords('', '64', '0').ok, false)
   assert.strictEqual(parseCoords('abc', '64', '0').ok, false)
   assert.strictEqual(parseCoords('1.5', '64', '0').error, 'X, Y and Z must all be whole numbers')
+})
+
+test('a fresh session has no dig in flight and aborting a dig is a no-op', () => {
+  const session = new BotSession('X', new LogBus(), () => {})
+  assert.strictEqual(session.digTimer, null)
+  assert.strictEqual(session.digFinish, null)
+  assert.doesNotThrow(() => session._abortDig('disconnected'))
+  assert.strictEqual(session.digTimer, null)
+  assert.strictEqual(session.digFinish, null)
 })

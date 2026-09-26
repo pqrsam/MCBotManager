@@ -41,6 +41,7 @@ class BotSession {
     this.isTransferring = false
     this.reconnectTimer = null
     this.digTimer = null
+    this.digFinish = null
     this.latestPos = null
     this.posDirty = false
     this.lastMoveLogAt = 0
@@ -76,6 +77,11 @@ class BotSession {
   _clearTimers () {
     if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null }
     if (this.digTimer) { clearTimeout(this.digTimer); this.digTimer = null }
+  }
+
+  _abortDig (reason) {
+    if (this.digTimer) { clearTimeout(this.digTimer); this.digTimer = null }
+    this.digFinish?.({ ok: false, error: reason })
   }
 
   _spawnBot () {
@@ -151,6 +157,7 @@ class BotSession {
     bot.on('end', (reason) => {
       this.say('EVENT', `disconnected (${reason})`)
       if (!this.isTransferring) this.global('EVENT', `${this.username} disconnected (${reason})`)
+      this._abortDig('disconnected')
       this.bot = null
       this.setStatus('disconnected')
     })
@@ -187,7 +194,7 @@ class BotSession {
 
   _destroyBot () {
     this.stopMovement()
-    if (this.digTimer) { clearTimeout(this.digTimer); this.digTimer = null }
+    this._abortDig('disconnected')
     if (this.bot) {
       try { this.bot.quit('transfer') } catch (_) {}
       this.bot = null
@@ -199,7 +206,6 @@ class BotSession {
     this.isTransferring = false
     this._clearTimers()
     this._destroyBot()
-    this.setStatus('disconnected')
     this.say('EVENT', `disconnect requested (${reason})`)
     this.global('EVENT', `${this.username} disconnect requested`)
   }
@@ -281,9 +287,11 @@ class BotSession {
       const finish = (result) => {
         if (settled) return
         settled = true
+        this.digFinish = null
         if (this.digTimer) { clearTimeout(this.digTimer); this.digTimer = null }
         resolve(result)
       }
+      this.digFinish = finish
       this.digTimer = setTimeout(() => {
         try { bot.stopDigging() } catch (_) {}
         this.say('ERROR', `dig timed out after ${DIG_TIMEOUT_MS / 1000}s`)
@@ -294,6 +302,7 @@ class BotSession {
         this.say('BLOCK', `broke ${block.name} at ${parsed.pos.x}, ${parsed.pos.y}, ${parsed.pos.z}`)
         finish({ ok: true, error: null })
       }).catch((err) => {
+        if (settled) return
         this.say('ERROR', `dig failed: ${err.message}`)
         finish({ ok: false, error: err.message })
       })
