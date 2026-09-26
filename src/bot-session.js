@@ -54,6 +54,7 @@ class BotSession {
   global (tag, text) { this.log.emitGlobal(formatLine(tag, `${this.username} ${text}`)) }
 
   setStatus (status) {
+    if (this.status === status) return
     this.status = status
     this.onStateChange(this.snapshot())
   }
@@ -71,22 +72,28 @@ class BotSession {
   connect (settings) {
     this.settings = { ...settings }
     this.isTransferring = false
+    if (this.bot) this._destroyBot()
     this._spawnBot()
   }
 
   _clearTimers () {
     if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null }
-    if (this.digTimer) { clearTimeout(this.digTimer); this.digTimer = null }
   }
 
   _abortDig (reason) {
+    if (this.digFinish) {
+      try { this.bot.stopDigging() } catch (_) {}
+    }
     if (this.digTimer) { clearTimeout(this.digTimer); this.digTimer = null }
     this.digFinish?.({ ok: false, error: reason })
   }
 
   _spawnBot () {
     this._clearTimers()
+    this._abortDig('disconnected')
     this.setStatus('connecting')
+    this.lastMoveLogAt = 0
+    this.lastMoveLogKey = ''
     const { host, port, version } = this.settings
     this.say('EVENT', `connecting to ${host}:${port} (${version})`)
     this.global('EVENT', `connecting to ${host}:${port} (${version})`)
@@ -103,6 +110,7 @@ class BotSession {
     this.bot = bot
 
     bot.on('login', () => {
+      if (bot !== this.bot) return
       this.say('EVENT', 'login packet received')
       try {
         bot._client.registerChannel('BungeeCord', ['string', 'restBuffer'])
@@ -113,6 +121,7 @@ class BotSession {
     })
 
     bot.on('spawn', () => {
+      if (bot !== this.bot) return
       this.setStatus('connected')
       this.latestPos = { x: bot.entity.position.x, y: bot.entity.position.y, z: bot.entity.position.z }
       this.posDirty = true
@@ -120,20 +129,33 @@ class BotSession {
       this.global('EVENT', `connected (${this._fmtPos(this.latestPos)})`)
     })
 
-    bot.on('game', () => this.say('EVENT', `game mode: ${bot.game?.gameMode ?? 'unknown'}`))
+    bot.on('game', () => {
+      if (bot !== this.bot) return
+      this.say('EVENT', `game mode: ${bot.game?.gameMode ?? 'unknown'}`)
+    })
     bot.on('health', () => {
+      if (bot !== this.bot) return
       this.health = bot.health
       this.onStateChange(this.snapshot())
     })
-    bot.on('death', () => this.say('EVENT', 'death'))
-    bot.on('respawn', () => this.say('EVENT', 'respawned'))
+    bot.on('death', () => {
+      if (bot !== this.bot) return
+      this.say('EVENT', 'death')
+    })
+    bot.on('respawn', () => {
+      if (bot !== this.bot) return
+      this.say('EVENT', 'respawned')
+    })
 
     bot.on('messagestr', (msg, position) => {
+      if (bot !== this.bot) return
       const tag = position === 'chat' ? 'CHAT' : 'SYS'
       this.say(tag, msg)
     })
 
-    bot.on('move', (pos) => {
+    bot.on('move', () => {
+      if (bot !== this.bot) return
+      const pos = bot.entity.position
       this.latestPos = { x: pos.x, y: pos.y, z: pos.z }
       this.posDirty = true
       const key = `${Math.floor(pos.x)},${Math.floor(pos.y)},${Math.floor(pos.z)}`
@@ -146,15 +168,18 @@ class BotSession {
     })
 
     bot.on('error', (err) => {
+      if (bot !== this.bot) return
       this.say('ERROR', err?.message ?? String(err))
-      this.global('ERROR', `${this.username} ${err?.message ?? String(err)}`)
+      this.global('ERROR', err?.message ?? String(err))
     })
     bot.on('kicked', (reason) => {
+      if (bot !== this.bot) return
       const msg = typeof reason === 'string' ? reason : JSON.stringify(reason)
       this.say('EVENT', `kicked: ${msg}`)
       this.global('EVENT', `${this.username} kicked: ${msg}`)
     })
     bot.on('end', (reason) => {
+      if (bot !== this.bot) return
       this.say('EVENT', `disconnected (${reason})`)
       if (!this.isTransferring) this.global('EVENT', `${this.username} disconnected (${reason})`)
       this._abortDig('disconnected')
@@ -179,6 +204,7 @@ class BotSession {
       this.say('BUNGEE', `ignoring action: ${parsed.action}`)
       return
     }
+    if (this.isTransferring) return
     const target = parsed.data || '(default)'
     this.say('BUNGEE', `transfer requested to ${target} - reconnecting to ${this.settings.host}:${this.settings.port}`)
     this.isTransferring = true
@@ -243,6 +269,11 @@ class BotSession {
   async dig (x, y, z) {
     if (this.status !== 'connected' || !this.bot) {
       return { ok: false, error: 'bot is not connected' }
+    }
+    if (this.digFinish) {
+      const msg = 'a dig is already in progress'
+      this.say('ERROR', msg)
+      return { ok: false, error: msg }
     }
     const parsed = parseCoords(x, y, z)
     if (!parsed.ok) {

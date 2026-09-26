@@ -17,8 +17,8 @@ test('parsePluginPayload returns null for an empty payload', () => {
   assert.strictEqual(parsePluginPayload(Buffer.alloc(0)), null)
 })
 
-test('parsePluginPayload lowercases the action for comparison', () => {
-  assert.strictEqual(parsePluginPayload(Buffer.from('Connect\u0000x')).action.toLowerCase(), 'connect')
+test('parsePluginPayload preserves the action case', () => {
+  assert.strictEqual(parsePluginPayload(Buffer.from('Connect\u0000x')).action, 'Connect')
 })
 
 test('isTransferAction covers connect and transfer', () => {
@@ -46,4 +46,13 @@ test('a fresh session has no dig in flight and aborting a dig is a no-op', () =>
   assert.doesNotThrow(() => session._abortDig('disconnected'))
   assert.strictEqual(session.digTimer, null)
   assert.strictEqual(session.digFinish, null)
+})
+
+test('dig rejects a second concurrent dig while one is in flight', async () => {
+  const session = new BotSession('X', new LogBus(), () => {})
+  session.status = 'connected'
+  session.bot = {}
+  session.digFinish = () => {}
+  const result = await session.dig(1, 64, 2)
+  assert.deepStrictEqual(result, { ok: false, error: 'a dig is already in progress' })
 })
