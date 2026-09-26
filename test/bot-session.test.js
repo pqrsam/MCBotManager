@@ -68,6 +68,38 @@ test('a spawn that throws leaves the session disconnected and retryable', () => 
   }
 })
 
+test('a transfer reconnect that cannot spawn does not throw out of the timer', async () => {
+  const mineflayer = require('mineflayer')
+  const realCreateBot = mineflayer.createBot
+  const uncaught = []
+  const onUncaught = (err) => uncaught.push(err)
+  process.on('uncaughtException', onUncaught)
+  let attempts = 0
+  mineflayer.createBot = () => {
+    attempts++
+    if (attempts === 1) return { on () {}, clearControlStates () {}, quit () {} }
+    throw new Error('Unsupported protocol version')
+  }
+  try {
+    const log = new LogBus()
+    const session = new BotSession('X', log, () => {})
+    session.connect({ host: 'localhost', port: 25565, version: '1.8.9' })
+    session._onBungeePayload(Buffer.from('Connect\u0000tbw-1', 'utf8'))
+    const deadline = Date.now() + 5000
+    while (attempts < 2 && Date.now() < deadline) {
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+    assert.strictEqual(attempts, 2)
+    assert.deepStrictEqual(uncaught, [])
+    assert.strictEqual(session.status, 'disconnected')
+    assert.ok(log.forBot('X').snapshot().some(l => l.text.includes('[ERROR] reconnect failed: Unsupported protocol version')))
+    assert.ok(log.global.snapshot().some(l => l.text.includes('[ERROR] X reconnect failed: Unsupported protocol version')))
+  } finally {
+    process.off('uncaughtException', onUncaught)
+    mineflayer.createBot = realCreateBot
+  }
+})
+
 test('dig rejects a second concurrent dig while one is in flight', async () => {
   const session = new BotSession('X', new LogBus(), () => {})
   session.status = 'connected'

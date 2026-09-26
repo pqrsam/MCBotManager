@@ -220,7 +220,12 @@ class BotSession {
       if (!this.isTransferring) return
       this.isTransferring = false
       this.say('BUNGEE', `reconnecting after transfer to ${target}`)
-      this._spawnBot()
+      try {
+        this._spawnBot()
+      } catch (err) {
+        this.say('ERROR', `reconnect failed: ${err.message}`)
+        this.global('ERROR', `reconnect failed: ${err.message}`)
+      }
     }, RECONNECT_DELAY_MS)
   }
 
