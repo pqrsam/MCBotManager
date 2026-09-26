@@ -5,9 +5,11 @@ const mineflayer = require('mineflayer')
 const { loadConfig, saveConfig, configPath } = require('./config')
 const { LogBus, formatLine } = require('./log-bus')
 const { BotManager } = require('./bot-manager')
+const { FileLog, formatFileLine } = require('./file-log')
 
 let win = null
 let logBus = null
+let fileLog = null
 let manager = null
 let configState = { exists: false, bots: [] }
 
@@ -118,9 +120,14 @@ function registerIpc () {
 
 app.whenReady().then(() => {
   logBus = new LogBus(2000)
+  fileLog = new FileLog().open()
   configState = loadConfig(configPath)
   if (configState.error) logBus.emitGlobal(formatLine('ERROR', configState.error))
   manager = new BotManager(configState.bots, logBus, pushState)
+
+  logBus.subscribe((entry) => {
+    fileLog.write(formatFileLine(entry))
+  })
 
   logBus.subscribe((entry) => {
     if (win && !win.isDestroyed()) win.webContents.send('log:line', entry)
@@ -136,9 +143,11 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (manager) manager.disconnectAll('app closing')
+  if (fileLog) fileLog.close()
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
   if (manager) manager.disconnectAll('app closing')
+  if (fileLog) fileLog.close()
 })
