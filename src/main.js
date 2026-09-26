@@ -38,7 +38,7 @@ function createWindow () {
     width: 1280,
     height: 820,
     backgroundColor: '#14161a',
-    title: 'Minecraft Bot Tester',
+    title: 'MCBotManager',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),

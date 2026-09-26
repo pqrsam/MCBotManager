@@ -2,7 +2,7 @@
   "name": "mcbotmanager",
   "version": "1.0.0",
   "private": true,
-  "description": "Small personal tool for spawning and controlling MCBotManager test bots",
+  "description": "Desktop tool for spawning and controlling offline-mode Minecraft test bots",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
