@@ -20,7 +20,7 @@ function loadConfig (filePath) {
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
     const bots = normalizeBots(parsed?.bots)
     if (!Array.isArray(parsed?.bots)) {
-      return { exists: true, bots, error: `${path.basename(filePath)}: "bots" is not an array` }
+      return { exists: true, bots: [], error: `${path.basename(filePath)}: "bots" is not an array` }
     }
     return { exists: true, bots, error: null }
   } catch (err) {

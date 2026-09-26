@@ -8,6 +8,11 @@ test('formatLine produces [HH:MM:SS] [TAG] text', () => {
   assert.strictEqual(formatLine('CHAT', 'hello', d), '[15:42:08] [CHAT] hello')
 })
 
+test('formatLine zero-pads single-digit hour, minute and second', () => {
+  const d = new Date(2026, 0, 2, 9, 5, 3)
+  assert.strictEqual(formatLine('CHAT', 'hello', d), '[09:05:03] [CHAT] hello')
+})
+
 test('LogBuffer keeps insertion order and assigns increasing ids', () => {
   const b = new LogBuffer()
   b.append('one')
@@ -23,11 +28,35 @@ test('LogBuffer drops oldest lines past the limit', () => {
   assert.deepStrictEqual(b.snapshot().map(l => l.text), ['c', 'd', 'e'])
 })
 
+test('LogBuffer defaults to the 2000-line cap', () => {
+  assert.strictEqual(new LogBuffer().limit, 2000)
+})
+
+test('LogBuffer drops its oldest line past the default cap', () => {
+  const b = new LogBuffer()
+  for (let i = 0; i < 2001; i++) b.append(`l${i}`)
+  const lines = b.snapshot()
+  assert.strictEqual(lines.length, 2000)
+  assert.strictEqual(lines[0].text, 'l1')
+  assert.strictEqual(lines[lines.length - 1].text, 'l2000')
+})
+
+test('LogBus defaults every buffer to the 2000-line cap', () => {
+  const bus = new LogBus()
+  assert.strictEqual(bus.limit, 2000)
+  assert.strictEqual(bus.global.limit, 2000)
+  assert.strictEqual(bus.forBot('A').limit, 2000)
+})
+
 test('LogBuffer ids stay unique after trimming', () => {
   const b = new LogBuffer(2)
-  for (const s of ['a', 'b', 'c']) b.append(s)
+  const trimmed = b.append('a')
+  b.append('b')
+  b.append('c')
   const ids = b.snapshot().map(l => l.id)
   assert.strictEqual(new Set(ids).size, 2)
+  assert.ok(ids[1] > ids[0])
+  assert.ok(!ids.includes(trimmed.id))
 })
 
 test('LogBus routes entries to per-bot buffers and the global buffer', () => {

@@ -43,6 +43,26 @@ test('loadConfig reports malformed JSON without throwing', () => {
   assert.deepStrictEqual(r.bots, [])
 })
 
+test('loadConfig rejects a non-array bots string without inventing bots', () => {
+  const f = tmpFile('config.json')
+  fs.writeFileSync(f, JSON.stringify({ bots: 'Steve' }))
+  const r = loadConfig(f)
+  assert.strictEqual(r.exists, true)
+  assert.notStrictEqual(r.error, null)
+  assert.match(r.error, /bots/)
+  assert.deepStrictEqual(r.bots, [])
+})
+
+test('loadConfig rejects a non-array bots object without inventing bots', () => {
+  const f = tmpFile('config.json')
+  fs.writeFileSync(f, JSON.stringify({ bots: { a: 1 } }))
+  const r = loadConfig(f)
+  assert.strictEqual(r.exists, true)
+  assert.notStrictEqual(r.error, null)
+  assert.match(r.error, /bots/)
+  assert.deepStrictEqual(r.bots, [])
+})
+
 test('saveConfig writes only the bots key, then round-trips', () => {
   const f = tmpFile('config.json')
   const w = saveConfig(f, ['A', 'B'])
