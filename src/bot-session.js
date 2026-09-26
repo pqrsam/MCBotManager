@@ -182,12 +182,12 @@ class BotSession {
       if (bot !== this.bot) return
       const msg = typeof reason === 'string' ? reason : JSON.stringify(reason)
       this.say('EVENT', `kicked: ${msg}`)
-      this.global('EVENT', `${this.username} kicked: ${msg}`)
+      this.global('EVENT', `kicked: ${msg}`)
     })
     bot.on('end', (reason) => {
       if (bot !== this.bot) return
       this.say('EVENT', `disconnected (${reason})`)
-      if (!this.isTransferring) this.global('EVENT', `${this.username} disconnected (${reason})`)
+      if (!this.isTransferring) this.global('EVENT', `disconnected (${reason})`)
       this._abortDig('disconnected')
       this.bot = null
       this.setStatus('disconnected')
@@ -244,7 +244,7 @@ class BotSession {
     this._clearTimers()
     this._destroyBot()
     this.say('EVENT', `disconnect requested (${reason})`)
-    this.global('EVENT', `${this.username} disconnect requested`)
+    this.global('EVENT', `disconnect requested`)
   }
 
   send (text) {

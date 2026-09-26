@@ -100,6 +100,73 @@ test('a transfer reconnect that cannot spawn does not throw out of the timer', a
   }
 })
 
+function fakeBotWithHandlers () {
+  const handlers = new Map()
+  const bot = {
+    on (event, fn) { handlers.set(event, fn); return bot },
+    clearControlStates () {},
+    quit () {}
+  }
+  return { bot, handlers }
+}
+
+test('a kicked session logs the username exactly once in the global line', () => {
+  const mineflayer = require('mineflayer')
+  const realCreateBot = mineflayer.createBot
+  const { bot, handlers } = fakeBotWithHandlers()
+  mineflayer.createBot = () => bot
+  try {
+    const log = new LogBus()
+    const session = new BotSession('TestBot1', log, () => {})
+    session.connect({ host: 'localhost', port: 25565, version: '1.8.9' })
+    handlers.get('kicked')('You were kicked for being AFK')
+    const line = log.global.snapshot().find(l => l.text.includes('kicked'))
+    assert.ok(line, 'expected a global kicked line')
+    assert.match(line.text, /\[EVENT\] TestBot1 kicked: /)
+    assert.doesNotMatch(line.text, /TestBot1 TestBot1/)
+  } finally {
+    mineflayer.createBot = realCreateBot
+  }
+})
+
+test('a disconnecting session logs the username exactly once in the global line', () => {
+  const mineflayer = require('mineflayer')
+  const realCreateBot = mineflayer.createBot
+  const { bot, handlers } = fakeBotWithHandlers()
+  mineflayer.createBot = () => bot
+  try {
+    const log = new LogBus()
+    const session = new BotSession('TestBot1', log, () => {})
+    session.connect({ host: 'localhost', port: 25565, version: '1.8.9' })
+    handlers.get('end')('disconnect.quitting')
+    const line = log.global.snapshot().find(l => l.text.includes('disconnected ('))
+    assert.ok(line, 'expected a global disconnected line')
+    assert.match(line.text, /\[EVENT\] TestBot1 disconnected \(/)
+    assert.doesNotMatch(line.text, /TestBot1 TestBot1/)
+  } finally {
+    mineflayer.createBot = realCreateBot
+  }
+})
+
+test('a requested disconnect logs the username exactly once in the global line', () => {
+  const mineflayer = require('mineflayer')
+  const realCreateBot = mineflayer.createBot
+  const { bot } = fakeBotWithHandlers()
+  mineflayer.createBot = () => bot
+  try {
+    const log = new LogBus()
+    const session = new BotSession('TestBot1', log, () => {})
+    session.connect({ host: 'localhost', port: 25565, version: '1.8.9' })
+    session.disconnect('disconnect.quitting')
+    const line = log.global.snapshot().find(l => l.text.includes('disconnect requested'))
+    assert.ok(line, 'expected a global disconnect requested line')
+    assert.match(line.text, /\[EVENT\] TestBot1 disconnect requested/)
+    assert.doesNotMatch(line.text, /TestBot1 TestBot1/)
+  } finally {
+    mineflayer.createBot = realCreateBot
+  }
+})
+
 test('dig rejects a second concurrent dig while one is in flight', async () => {
   const session = new BotSession('X', new LogBus(), () => {})
   session.status = 'connected'
