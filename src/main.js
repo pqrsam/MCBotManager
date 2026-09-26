@@ -114,6 +114,11 @@ function registerIpc () {
     return { ok: true }
   })
 
+  ipcMain.handle('bot:stop-dig', (_e, username) => {
+    const s = manager.session(username)
+    return s ? s.stopDigging() : { ok: false, error: `unknown bot: ${username}` }
+  })
+
   ipcMain.handle('bot:dig', (_e, username, x, y, z) => {
     const s = manager.session(username)
     if (!s) return Promise.resolve({ ok: false, error: `unknown bot: ${username}` })

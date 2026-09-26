@@ -27,7 +27,7 @@
       'connect-host', 'connect-port', 'connect-version',
       'bot-table-body', 'all-message', 'all-send-message',
       'bot-message', 'bot-send-chat',
-      'btn-move-stop', 'dig-x', 'dig-y', 'dig-z', 'btn-dig',
+      'dig-x', 'dig-y', 'dig-z', 'btn-dig', 'btn-dig-stop',
       'selected-name', 'bot-console-title', 'bot-console', 'global-console', 'btn-toggle-global', 'fatal'
     ]) ui[id] = $(id)
   }
@@ -192,7 +192,10 @@
     ui['btn-disconnect-all'].disabled = !has
     ui['all-send-message'].disabled = !has
     const none = !state.selected
-    for (const id of ['bot-send-chat', 'btn-move-stop', 'btn-dig']) ui[id].disabled = none
+    ui['bot-send-chat'].disabled = none
+    ui['btn-dig'].disabled = none
+    const digging = Boolean(state.bots.find(b => b.username === state.selected)?.digging)
+    ui['btn-dig-stop'].disabled = none || !digging
     for (const b of document.querySelectorAll('.movement .move')) b.disabled = none
   }
 
@@ -301,9 +304,6 @@
       btn.addEventListener('pointercancel', release)
       btn.addEventListener('lostpointercapture', release)
     }
-    ui['btn-move-stop'].addEventListener('click', () => {
-      if (state.selected) api.bots.stop(state.selected)
-    })
   }
 
   async function boot () {
@@ -369,6 +369,11 @@
     ui['btn-dig'].addEventListener('click', async () => {
       if (!state.selected) return
       await api.bots.dig(state.selected, ui['dig-x'].value, ui['dig-y'].value, ui['dig-z'].value)
+    })
+
+    ui['btn-dig-stop'].addEventListener('click', async () => {
+      if (!state.selected) return
+      await api.bots.stopDig(state.selected)
     })
 
     ui['btn-toggle-global'].addEventListener('click', (ev) => {

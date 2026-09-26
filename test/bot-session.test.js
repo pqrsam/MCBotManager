@@ -305,3 +305,35 @@ test('errorText keeps the message and appends trimmed stack frames', () => {
   assert.strictEqual(errorText(null), 'unknown error')
   assert.strictEqual(errorText({ message: 'no stack here' }), 'no stack here')
 })
+
+test('snapshot reports whether a dig is in progress', () => {
+  const session = new BotSession('X', new LogBus(), () => {})
+  assert.strictEqual(session.snapshot().digging, false)
+  session.digFinish = () => {}
+  assert.strictEqual(session.snapshot().digging, true)
+})
+
+test('stopDigging cancels an in-flight dig and reports it stopped', async () => {
+  const logBus = new LogBus()
+  const session = new BotSession('X', logBus, () => {})
+  let resolved = null
+  session.digFinish = (result) => { resolved = result; session.digFinish = null }
+  session.digTimer = setTimeout(() => {}, 60000)
+  const stopCalls = []
+  session.bot = { stopDigging: () => { stopCalls.push(1) } }
+
+  const r = session.stopDigging()
+  assert.strictEqual(r.ok, true)
+  assert.deepStrictEqual(resolved, { ok: false, error: 'dig stopped' })
+  assert.strictEqual(stopCalls.length, 1, 'mineflayer dig internals must be torn down')
+  assert.strictEqual(session.digTimer, null, 'the dig timeout must be cleared')
+  assert.strictEqual(session.snapshot().digging, false)
+  const lines = logBus.forBot('X').snapshot().map(l => l.text)
+  assert.ok(lines.some(l => l.includes('dig stopped')), lines.join(' | '))
+})
+
+test('stopDigging is a no-op when nothing is being dug', () => {
+  const session = new BotSession('X', new LogBus(), () => {})
+  session.bot = { stopDigging: () => { throw new Error('should not be called') } }
+  assert.deepStrictEqual(session.stopDigging(), { ok: false, error: 'no dig in progress' })
+})

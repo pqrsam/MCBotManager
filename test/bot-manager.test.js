@@ -46,14 +46,15 @@ test('snapshots report each bot status', () => {
   assert.deepStrictEqual(byName, { A: 'connected', B: 'disconnected' })
 })
 
-test('snapshots carry exactly the five keys the renderer depends on', () => {
+test('snapshots carry exactly the keys the renderer depends on', () => {
   const mgr = makeManager(['A'])
   assert.deepStrictEqual(mgr.snapshots()[0], {
     username: 'A',
     status: 'connected',
     health: null,
     pos: null,
-    hasBot: true
+    hasBot: true,
+    digging: false
   })
 })
 

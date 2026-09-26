@@ -124,7 +124,8 @@ class BotSession {
       status: this.status,
       health: this.health,
       pos: this.latestPos ? { ...this.latestPos } : null,
-      hasBot: this.bot !== null
+      hasBot: this.bot !== null,
+      digging: this.digFinish !== null
     }
   }
 
@@ -345,6 +346,13 @@ class BotSession {
     try { this.bot.clearControlStates() } catch (_) {}
   }
 
+  stopDigging () {
+    if (!this.digFinish) return { ok: false, error: 'no dig in progress' }
+    this.say('BLOCK', 'dig stopped')
+    this._abortDig('dig stopped')
+    return { ok: true, error: null }
+  }
+
   async dig (x, y, z) {
     if (this.status !== 'connected' || !this.bot) {
       return { ok: false, error: 'bot is not connected' }
@@ -399,9 +407,11 @@ class BotSession {
         settled = true
         this.digFinish = null
         if (this.digTimer) { clearTimeout(this.digTimer); this.digTimer = null }
+        this.onStateChange(this.snapshot())
         resolve(result)
       }
       this.digFinish = finish
+      this.onStateChange(this.snapshot())
       this.digTimer = setTimeout(() => {
         try { bot.stopDigging() } catch (_) {}
         this.say('ERROR', `dig timed out after ${DIG_TIMEOUT_MS / 1000}s`)

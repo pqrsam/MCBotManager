@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('api', {
     chat: (username, text) => ipcRenderer.invoke('bot:chat', username, text),
     control: (username, control, state) => ipcRenderer.invoke('bot:control', username, control, state),
     stop: (username) => ipcRenderer.invoke('bot:stop', username),
+    stopDig: (username) => ipcRenderer.invoke('bot:stop-dig', username),
     dig: (username, x, y, z) => ipcRenderer.invoke('bot:dig', username, x, y, z),
     broadcastChat: (text) => ipcRenderer.invoke('broadcast:chat', text)
   },
