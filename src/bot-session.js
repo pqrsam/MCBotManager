@@ -2,6 +2,8 @@ const mineflayer = require('mineflayer')
 const { Vec3 } = require('vec3')
 const { formatLine } = require('./log-bus')
 
+const DISABLED_PLUGINS = { anvil: false, furnace: false, villager: false }
+
 const DIG_TIMEOUT_MS = 15000
 const RECONNECT_DELAY_MS = 1000
 
@@ -168,7 +170,7 @@ class BotSession {
         auth: 'offline',
         logErrors: false,
         hideErrors: true,
-        plugins: { anvil: false, furnace: false, villager: false, simple_inventory: false }
+        plugins: DISABLED_PLUGINS
       })
     } catch (err) {
       this.setStatus('disconnected')
@@ -430,4 +432,4 @@ class BotSession {
   }
 }
 
-module.exports = { BotSession, parsePluginPayload, parseCoords, isTransferAction, chatToText, describeReason, errorText }
+module.exports = { BotSession, DISABLED_PLUGINS, parsePluginPayload, parseCoords, isTransferAction, chatToText, describeReason, errorText }
